@@ -40,16 +40,18 @@ ${locator.QUESTIONS[0].date}          xpath=//span[@class="date ng-binding"]
   [return]   ${INITIAL_TENDER_DATA}
 
 Підготувати клієнт для користувача
-  [Arguments]  @{ARGUMENTS}
-  [Documentation]  Відкрити браузер, створити об’єкт api wrapper, тощо
-  ...      ${ARGUMENTS[0]} ==  username
-  Open Browser
-  ...      ${USERS.users['${ARGUMENTS[0]}'].homepage}
-  ...      ${USERS.users['${ARGUMENTS[0]}'].browser}
-  ...      alias=${ARGUMENTS[0]}
-  Set Window Size   @{USERS.users['${ARGUMENTS[0]}'].size}
-  Set Window Position   @{USERS.users['${ARGUMENTS[0]}'].position}
-  Run Keyword If   '${username}' != 'Newtend_Owner'   Login
+    [Arguments]  ${username}
+    Set Suite Variable  ${my_alias}  my_${username}
+    ${chrome_options}=    Evaluate    sys.modules['selenium.webdriver'].ChromeOptions()    sys
+    Run Keyword If  '${USERS.users['${username}'].browser}' in 'Chrome chrome'  Run Keywords
+    ...  Call Method  ${chrome_options}  add_argument  --headless
+    ...  AND  Create Webdriver  Chrome  alias=${my_alias}  chrome_options=${chrome_options}
+    ...  AND  Go To  ${USERS.users['${username}'].homepage}
+    ...  ELSE  Open Browser  ${USERS.users['${username}'].homepage}  ${USERS.users['${username}'].browser}  alias=${my_alias}
+    Set Window Size  ${USERS.users['${username}'].size[0]}  ${USERS.users['${username}'].size[1]}
+    Run Keyword If  'Viewer' not in '${username}'  Run Keywords
+    ...  Авторизація  ${username}
+    ...  AND  Run Keyword And Ignore Error  Закрити Модалку
 
 Login
   Wait Until Page Contains Element   id=indexpage_login   20
