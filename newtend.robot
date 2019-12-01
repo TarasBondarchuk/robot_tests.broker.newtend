@@ -33,11 +33,7 @@ ${locator.QUESTIONS[0].description}   xpath=//span[@class="question-description 
 ${locator.QUESTIONS[0].date}          xpath=//span[@class="date ng-binding"]
 
 *** Keywords ***
-Підготувати дані для оголошення тендера
-  ${INITIAL_TENDER_DATA}=  prepare_test_tender_data
-  ${INITIAL_TENDER_DATA}=  Add_data_for_GUI_FrontEnds  ${INITIAL_TENDER_DATA}
-  ${INITIAL_TENDER_DATA}=  Update_data_for_Newtend  ${INITIAL_TENDER_DATA}
-  [return]   ${INITIAL_TENDER_DATA}
+
 
 Підготувати клієнт для користувача
     [Arguments]  ${username}
@@ -53,91 +49,69 @@ ${locator.QUESTIONS[0].date}          xpath=//span[@class="date ng-binding"]
     ...  Авторизація  ${username}
     ...  AND  Run Keyword And Ignore Error  Закрити Модалку
 
-Login
-  Wait Until Page Contains Element   id=indexpage_login   20
-  Click Element   id=indexpage_login
-  Wait Until Page Contains Element   id=password   20
-  Input text   id=login-email   ${USERS.users['${username}'].login}
-  Input text   id=password   ${USERS.users['${username}'].password}
-  Click Element   id=submit-login-button
-  Wait Until Page Contains Element   xpath =//a[@class="close-modal-dialog"]  20
-  Go to   ${USERS.users['${ARGUMENTS[0]}'].homepage}
-#  Wait Until Page Contains Element   xpath=//div[@class="introjs-overlay"]   20
+
+
+Підготувати дані для оголошення тендера
+    [Arguments]  ${username}  ${initial_tender_data}  ${role}
+    ${tender_data}=  prepare_tender_data  ${role}  ${initial_tender_data}
+    [Return]  ${tender_data}
+
+
+Оновити сторінку з тендером
+    [Arguments]  ${username}  ${tender_uaid}
+    Switch Browser  ${my_alias}
+    centrex.Пошук Тендера По Ідентифікатору  ${username}  ${tender_uaid}
+
+
+Авторизація
+    [Arguments]  ${username}
+    Click Element  xpath=//*[contains(@href, "/login")]
+    Wait Until Element Is Visible  xpath=//button[@name="login-button"]
+    Input Text  xpath=//input[@id="loginform-username"]  ${USERS.users['${username}'].login}
+    Input Text  xpath=//input[@id="loginform-password"]  ${USERS.users['${username}'].password}
+    Click Element  xpath=//button[@name="login-button"]
+
 
 Створити тендер
-  [Arguments]  @{ARGUMENTS}
-  [Documentation]
-  ...      ${ARGUMENTS[0]} ==  username
-  ...      ${ARGUMENTS[1]} ==  tender_data
-## Initialisation
-  ${prepared_tender_data}=  Add_data_for_GUI_FrontEnds  ${ARGUMENTS[1]}
-  ${prepared_tender_data}=  Update_data_for_Newtend  ${prepared_tender_data}
-  ${items}=         Get From Dictionary   ${prepared_tender_data.data}               items
-  ${title}=         Get From Dictionary   ${prepared_tender_data.data}               title
-  ${description}=   Get From Dictionary   ${prepared_tender_data.data}               description
-  ${budget}=        Get From Dictionary   ${prepared_tender_data.data.value}         amount
-  ${step_rate}=     Get From Dictionary   ${prepared_tender_data.data.minimalStep}   amount
-  ${start_date}=           Get From Dictionary   ${prepared_tender_data.data.tenderPeriod}    startDate
-  ${end_date}=             Get From Dictionary   ${prepared_tender_data.data.tenderPeriod}    endDate
-  ${enquiry_start_date}=   Get From Dictionary   ${prepared_tender_data.data.enquiryPeriod}   startDate
-  ${enquiry_end_date}=     Get From Dictionary   ${prepared_tender_data.data.enquiryPeriod}   endDate
-
-  Selenium2Library.Switch Browser    ${ARGUMENTS[0]}
-  Go To                              ${USERS.users['${username}'].homepage}
-  Wait Until Page Contains Element   xpath=//a[@href="#/create-tender"]   100
-  Click Link                         xpath=//a[@href="#/create-tender"]
-  Wait Until Page Contains           Новый тендер   100
-# Input fields tender
-  Input text   name=tenderName       ${title}
-  Input text   ${locator.edit.description}   ${description}
-  Input text   id=budget             ${budget}
-  Click Element                      id=with-nds
-  Input text   id=step               ${step_rate}
-# Add Item(s)
-  Додати придмет   ${items[0]}   0
-  Run Keyword If   '${mode}' == 'multi'     Додати багато придметів   items
-# Set tender datatimes
-  Set datetime   start-date-registration    ${start_date}
-  Set datetime   end-date-registration      ${end_date}
-  Set datetime   end-date-qualification     ${enquiry_end_date}
-  Set datetime   start-date-qualification   ${enquiry_start_date}
-# Save
-  Click Element                      ${locator.save}
-  Wait Until Page Contains Element   xpath=//div[@ng-click="goHome()"]   30
-  Click Element                      xpath=//div[@ng-click="goHome()"]
-# Get Ids
-  Wait Until Page Contains Element   xpath=//div[@class="title"]   30
-  ${tender_UAid}=         Get Text   xpath=//div[@class="title"]
-  ${Ids}=        Convert To String   ${tender_UAid}
-  Run keyword if   '${mode}' == 'multi'   Set Multi Ids   ${tender_UAid}
-  [return]  ${Ids}
-
-Set Multi Ids
-  [Arguments]  @{ARGUMENTS}
-  [Documentation]
-  ...      ${ARGUMENTS[0]} ==  ${tender_UAid}
-  ${current_location}=      Get Location
-  ${id}=    Get Substring   ${current_location}   -41   -9
-  ${Ids}=   Create List     ${tender_UAid}   ${id}
-
-Set datetime
-  [Arguments]  @{ARGUMENTS}
-  [Documentation]
-  ...      ${ARGUMENTS[0]} ==  control_id
-  ...      ${ARGUMENTS[1]} ==  date
-#Pick Date
-  Click Element       xpath=//input[@id="${ARGUMENTS[0]}"]/../span[@class="calendar-btn"]
-  Wait Until Page Contains Element            xpath=//td[@class="text-center ng-scope"]   30
-  ${datapicker_id}=   Get Element Attribute   xpath=//input[@id="${ARGUMENTS[0]}"]/..//td[@class="text-center ng-scope"]@id
-  ${datapicker_id}=   Get Substring           ${datapicker_id}   0   -1
-  ${date_index}=      newtend_date_picker_index   ${ARGUMENTS[1]}
-  ${datapicker_id}=   Convert To String       ${datapicker_id}${date_index}
-  Click Element       xpath=//input[@id="${ARGUMENTS[0]}"]/..//td[@id="${datapicker_id}"]/button
-#Set time
-  ${hous}=   Get Substring   ${ARGUMENTS[1]}   11   13
-  ${minutes}=   Get Substring   ${ARGUMENTS[1]}   14   16
-  Input text   xpath=//input[@id="${ARGUMENTS[0]}"]/../..//input[@ng-model="hours"]   ${hous}
-  Input text   xpath=//input[@id="${ARGUMENTS[0]}"]/../..//input[@ng-model="minutes"]   ${minutes}
+<<<<<<< .merge_file_a18660
+    [Arguments]  ${tender_owner}  ${tender_data}
+    Run Keyword And Ignore Error  Закрити Модалку
+    ${data}=  Set Variable  ${tender_data.data}
+    ${items}=  Get From Dictionary  ${tender_data.data}  items
+    Click Element  xpath=//li[@class="dropdown"]/descendant::*[@class="dropdown-toggle"][contains(@href, "tenders")]
+    Click Element  xpath=//*[@class="dropdown-menu"]/descendant::*[contains(@href, "/tenders/index")]
+    Click Element  xpath=//button[@id='create_auction_modal_btn']
+    Wait Until Element Is Visible  xpath=//button[@id="disqualification"]
+    Select From List By Value  xpath=//select[@id="tenders-tender_method"]  open_${data.procurementMethodType}
+    Click Element  xpath=//button[@id="disqualification"]
+    Wait Until Element Is Visible  xpath=//input[@id="value-amount"]
+    Convert Input Data To String  xpath=//input[@id="value-amount"]  ${tender_data.data.value.amount}
+    Adapt And Select By Value  xpath=//select[@id="value-valueaddedtaxincluded"]  ${tender_data.data.value.valueAddedTaxIncluded}
+    Convert Input Data To String  //input[@id="minimalstepvalue-amount"]  ${tender_data.data.minimalStep.amount}
+    Convert Input Data To String  //input[@id="guarantee-amount"]  ${tender_data.data.guarantee.amount}
+    Input Text  xpath=//*[@id="tender-title"]  ${tender_data.data.title}
+    Input Text  xpath=//*[@id="tender-description"]  ${tender_data.data.description}
+    Input Text  xpath=//*[@id="tender-dgfid"]  ${tender_data.data.dgfID}
+    ${decision_date}=  dgf_decision_date_for_site  ${data.dgfDecisionDate}
+    Input Text  xpath=//*[@id="dgf-decision-date"]  ${decision_date}
+    Input Text  xpath=//*[@id="tender-dgfdecisionid"]  ${data.dgfDecisionID}
+    ${tenderAttempts}=  Convert To String  ${tender_data.data.tenderAttempts}
+    Select From List By Value  xpath=//*[@id="tender-tenderattempts"]  ${tenderAttempts}
+    ${items_length}=  Get Length  ${items}
+    :FOR  ${item}  IN RANGE  ${items_length}
+    \  Log  ${items[${item}]}
+    \  Run Keyword If  ${item} > 0  Scroll To And Click Element  xpath=//button[@id="add-item"]
+    \  centrex.Додати Предмет   ${item}  ${items[${item}]}
+    ${auction_date}=  convert_date_for_auction  ${data.auctionPeriod.startDate}
+    Execute Javascript  $('#auction-start-date').val('${auction_date}');
+    Input Text  //*[@id="contactpoint-name"]  ${data.procuringEntity.contactPoint.name}
+    Input Text  //*[@id="contactpoint-email"]  ${data.procuringEntity.contactPoint.email}
+    Input Text  //*[@id="contactpoint-telephone"]  '000${data.procuringEntity.contactPoint.telephone}'
+    Execute Javascript  $('#procurementMethodDetails_accelerator').val('quick, accelerator=${acceleration}');
+    Click Element  //*[@name="simple_submit"]
+    Wait Until Element Is Visible  xpath=//div[@data-test-id="tenderID"]  20
+    ${auction_id}=  Get Text  xpath=//div[@data-test-id="tenderID"]
+    [Return]  ${auction_id}
 
 Додати придмет
   [Arguments]  @{ARGUMENTS}
