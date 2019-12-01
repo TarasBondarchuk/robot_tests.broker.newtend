@@ -49,7 +49,7 @@ ${locator.QUESTIONS[0].date}          xpath=//span[@class="date ng-binding"]
   ...      alias=${ARGUMENTS[0]}
   Set Window Size   @{USERS.users['${ARGUMENTS[0]}'].size}
   Set Window Position   @{USERS.users['${ARGUMENTS[0]}'].position}
-  Run Keyword If   '${username}' != 'Newtend_Viewer'   Login
+  Run Keyword If   '${username}' != 'Newtend_Owner'   Login
 
 Login
   Wait Until Page Contains Element   id=indexpage_login   20
